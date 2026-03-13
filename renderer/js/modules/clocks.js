@@ -1,7 +1,6 @@
 Modules.clocks = {
   interval: null,
 
-  // Common baseline references
   TIMEZONES: [
     {label:'Eastern Time (EST/EDT)', tz:'America/New_York'},
     {label:'Central Time (CST/CDT)', tz:'America/Chicago'},
@@ -23,7 +22,7 @@ Modules.clocks = {
     const saved = await window.api.getData('clocks-config').catch(()=>null) || [];
     const clocks = saved.length ? saved : [{city:'Local Time', tz:Intl.DateTimeFormat().resolvedOptions().timeZone, isLocal:true}];
 
-    container.innerHTML = `${Utils.modHead('14 / Clocks', 'World Clocks', '', `<button class="btn btn-gold" id="add-clock">+ Add Clock</button>`)}
+    container.innerHTML = `${Utils.modHead('14 / Clocks', 'World Clocks', '', `<button class="btn btn-gold" id="header-add-clock-btn">+ Add Clock</button>`)}
       <div><div class="clocks-grid" id="clocks-grid"></div></div>`;
 
     const render = (list) => {
@@ -65,7 +64,7 @@ Modules.clocks = {
       });
     }, 1000);
 
-    const addClock = () => {
+    const openAddClockModal = () => {
       App.openModal('Add Clock', `
         <div class="form-row">
           <label class="form-label">Display Name</label>
@@ -82,39 +81,54 @@ Modules.clocks = {
           <label class="form-label">IANA Timezone ID</label>
           <input class="input input-mono" id="custom-tz" placeholder="e.g. America/Toronto" />
         </div>
-        <button class="btn btn-gold" id="save-clock" style="width:100%;margin-top:12px">Add Clock</button>`);
+        <button class="btn btn-gold" id="save-clock" style="width:100%;margin-top:12px">Save Clock</button>`);
 
-      document.getElementById('clock-tz').addEventListener('change', e => {
-        document.getElementById('custom-tz-row').style.display = (e.target.value==='custom') ? '' : 'none';
-      });
+      // Delay attachment to ensure modal DOM is strictly ready
+      setTimeout(() => {
+        document.getElementById('clock-tz').addEventListener('change', e => {
+          document.getElementById('custom-tz-row').style.display = (e.target.value==='custom') ? '' : 'none';
+        });
 
-      document.getElementById('save-clock').addEventListener('click', async () => {
-        const city = document.getElementById('clock-name').value.trim();
-        const sel = document.getElementById('clock-tz').value;
-        const tz = sel === 'custom' ? document.getElementById('custom-tz').value.trim() : sel;
-        
-        if (!city||!tz) return App.toast('Name and Timezone required','error');
-        
-        // Simple validation check
-        try { Intl.DateTimeFormat(undefined, {timeZone: tz}); } 
-        catch { return App.toast('Invalid timezone format', 'error'); }
+        document.getElementById('save-clock').addEventListener('click', async () => {
+          const city = document.getElementById('clock-name').value.trim();
+          const sel = document.getElementById('clock-tz').value;
+          const tz = sel === 'custom' ? document.getElementById('custom-tz').value.trim() : sel;
+          
+          if (!city||!tz) return App.toast('Name and Timezone required','error');
+          
+          try { Intl.DateTimeFormat(undefined, {timeZone: tz}); } 
+          catch { return App.toast('Invalid timezone format', 'error'); }
 
-        clocks.push({city, tz});
-        await window.api.setData('clocks-config', clocks);
-        App.closeModal(); render(clocks); App.toast(`Added ${city}`);
-      });
+          clocks.push({city, tz});
+          await window.api.setData('clocks-config', clocks);
+          App.closeModal(); 
+          render(clocks); 
+          App.toast(`Added ${city}`);
+        });
+      }, 50);
     };
 
-    document.getElementById('add-clock').addEventListener('click', addClock);
-    document.getElementById('clocks-grid').addEventListener('click', async e => {
-      if (e.target.closest('#clock-add-card')) { addClock(); return; }
-      const rem = e.target.closest('.clock-remove');
-      if (rem) {
-        const idx = +rem.dataset.index;
-        clocks.splice(idx, 1);
-        await window.api.setData('clocks-config', clocks);
-        render(clocks); App.toast('Removed');
-      }
-    });
+    // Strict Element Lookups for Event Assignment
+    const headerBtn = container.querySelector('#header-add-clock-btn');
+    if (headerBtn) headerBtn.addEventListener('click', openAddClockModal);
+
+    const grid = container.querySelector('#clocks-grid');
+    if (grid) {
+      grid.addEventListener('click', async e => {
+        if (e.target.closest('#clock-add-card')) { 
+          openAddClockModal(); 
+          return; 
+        }
+        
+        const rem = e.target.closest('.clock-remove');
+        if (rem) {
+          const idx = +rem.dataset.index;
+          clocks.splice(idx, 1);
+          await window.api.setData('clocks-config', clocks);
+          render(clocks); 
+          App.toast('Removed');
+        }
+      });
+    }
   },
 };

@@ -143,13 +143,11 @@ function createWindow() {
 }
 
 function createTray() {
-  // Use a simple fallback if no icon file
   const iconPath = path.join(__dirname, '..', 'assets', 'tray-icon.png');
   
   try {
     tray = new Tray(iconPath);
   } catch {
-    // If icon missing, skip tray (non-fatal)
     return;
   }
 
@@ -182,7 +180,6 @@ function createTray() {
 
 // IPC Handlers
 function registerIPC() {
-  // Window controls
   ipcMain.on('window-minimize', () => mainWindow?.minimize());
   ipcMain.on('window-maximize', () => {
     if (mainWindow?.isMaximized()) mainWindow.unmaximize();
@@ -191,26 +188,23 @@ function registerIPC() {
   ipcMain.on('window-close', () => mainWindow?.hide());
   ipcMain.on('window-quit', () => app.quit());
 
-  // Generic data CRUD
   ipcMain.handle('data-get', (_, key) => readData(key));
   ipcMain.handle('data-set', (_, key, data) => {
     writeData(key, data);
     return true;
   });
 
-  // Clipboard specific
   ipcMain.handle('clipboard-write', (_, text) => {
     clipboard.writeText(text);
     lastClipboard = text;
     return true;
   });
 
-  // Open external URL
   ipcMain.on('open-url', (_, url) => {
     shell.openExternal(url);
   });
 
-  // Open app/file/folder & track recent folders
+  // Track explicit manual opens
   ipcMain.on('open-path', (_, filePath) => {
     shell.openPath(filePath);
     try {
@@ -218,23 +212,18 @@ function registerIPC() {
       const dirPath = stat.isDirectory() ? filePath : path.dirname(filePath);
       
       let folders = readData('recent-folders');
-      folders = folders.filter(f => f.path !== dirPath); // Remove if exists
+      folders = folders.filter(f => f.path !== dirPath);
       folders.unshift({ path: dirPath, name: path.basename(dirPath), lastOpened: new Date().toISOString() });
       
-      writeData('recent-folders', folders.slice(0, 30)); // Keep top 30
-    } catch (e) {
-      // Ignore errors if file doesn't exist or isn't accessible
-    }
+      writeData('recent-folders', folders.slice(0, 30));
+    } catch (e) {}
   });
 
-  // Get app version
   ipcMain.handle('get-version', () => app.getVersion());
 
-  // System info
   ipcMain.handle('get-sys-info', async () => {
     const os = require('os');
     const cpus = os.cpus();
-    // CPU usage via two samples
     const cpuUsage = () => {
       const cpus = os.cpus();
       let idle = 0, total = 0;
@@ -263,7 +252,7 @@ function registerIPC() {
     };
   });
 
-  // Recent files (monitored folders)
+  // Auto-monitored folders (Aggregates files to bubble up active parent folders)
   ipcMain.handle('get-recent-files', async () => {
     try {
       const config = (() => {
@@ -271,23 +260,47 @@ function registerIPC() {
       })();
       if (!config.folders?.length) return [];
 
-      const results = [];
+      const folderMap = new Map();
       const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      
+      // Ignore system heavy/unnecessary folders
+      const IGNORE = new Set(['node_modules', '.git', 'Windows', 'Program Files', 'Program Files (x86)', 'AppData', 'System Volume Information']);
 
-      for (const folder of config.folders) {
+      async function walk(dir, depth = 0) {
+        if (depth > 2) return; // Limit depth for performance
         try {
-          const entries = fs.readdirSync(folder);
+          const entries = await fs.promises.readdir(dir, { withFileTypes: true });
           for (const entry of entries) {
-            try {
-              const full = path.join(folder, entry);
-              const stat = fs.statSync(full);
-              if (stat.isFile() && stat.mtimeMs > cutoff) {
-                results.push({ path: full, mtime: stat.mtime.toISOString() });
-              }
-            } catch {}
+            if (IGNORE.has(entry.name) || entry.name.startsWith('.')) continue;
+            
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+              await walk(full, depth + 1);
+            } else if (entry.isFile()) {
+              try {
+                const stat = await fs.promises.stat(full);
+                if (stat.mtimeMs > cutoff) {
+                  // Map the active file to its parent directory
+                  const parent = dir;
+                  const existing = folderMap.get(parent) || 0;
+                  if (stat.mtimeMs > existing) {
+                    folderMap.set(parent, stat.mtimeMs);
+                  }
+                }
+              } catch {}
+            }
           }
-        } catch {}
+        } catch {} // Fails silently on permissions errors
       }
+
+      await Promise.all(config.folders.map(folder => walk(folder, 0)));
+      
+      const results = Array.from(folderMap.entries()).map(([p, mtime]) => ({
+        path: p,
+        name: path.basename(p),
+        mtime: new Date(mtime).toISOString()
+      }));
+
       return results.sort((a,b) => new Date(b.mtime)-new Date(a.mtime)).slice(0, 50);
     } catch { return []; }
   });
@@ -300,7 +313,6 @@ app.whenReady().then(() => {
   createTray();
   startClipboardWatcher();
 
-  // Global shortcut to show/hide
   globalShortcut.register('CommandOrControl+Shift+Space', () => {
     if (mainWindow) {
       if (mainWindow.isVisible() && mainWindow.isFocused()) {
@@ -312,7 +324,6 @@ app.whenReady().then(() => {
     }
   });
 
-  // Ctrl+Space = open launcher overlay (app must be focused)
   globalShortcut.register('CommandOrControl+Space', () => {
     if (mainWindow) {
       mainWindow.show();
@@ -321,21 +332,15 @@ app.whenReady().then(() => {
     }
   });
 
-  // Auto-launch on startup — wrapped in try/catch (can fail in dev/portable mode)
   try {
     app.setLoginItemSettings({
       openAtLogin: true,
       openAsHidden: false,
     });
-  } catch (e) {
-    // Non-fatal — startup registration not critical during development
-  }
+  } catch (e) {}
 });
 
-app.on('window-all-closed', () => {
-  // Keep running in tray on all platforms — do NOT quit
-  // User must Quit from tray context menu to fully exit
-});
+app.on('window-all-closed', () => {});
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
