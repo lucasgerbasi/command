@@ -1,0 +1,33 @@
+{
+  "name": "command",
+  "version": "1.0.0",
+  "description": "Personal desktop command center",
+  "main": "main/index.js",
+  "scripts": {
+    "start": "npx electron .",
+    "dev": "npx electron . --dev",
+    "build:win": "npx electron-builder --win",
+    "build:mac": "npx electron-builder --mac",
+    "build:linux": "npx electron-builder --linux"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "build": {
+    "appId": "com.command.app",
+    "productName": "Command",
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    }
+  }
+}

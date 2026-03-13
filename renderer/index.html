@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Command</title>
+  <link rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+
+  <div class="titlebar">
+    <div class="titlebar-drag">
+      <span class="titlebar-wordmark">Command</span>
+      <span class="titlebar-sep"></span>
+      <span class="titlebar-section" id="tb-section">Dashboard</span>
+    </div>
+    <div class="titlebar-time" id="titlebar-time"></div>
+    <div class="titlebar-controls">
+      <button class="tb-btn" id="btn-minimize" title="Minimize">─</button>
+      <button class="tb-btn" id="btn-maximize" title="Maximize">□</button>
+      <button class="tb-btn tb-close" id="btn-close" title="Close to tray">✕</button>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <nav class="sidebar-nav">
+      <button class="nav-btn active" data-module="dashboard" title="Dashboard">
+        <span class="nav-icon">◈</span><span class="nav-label">Dashboard</span>
+      </button>
+      <button class="nav-btn" data-module="launcher" title="Launcher">
+        <span class="nav-icon">⚡</span><span class="nav-label">Launcher</span>
+      </button>
+      <button class="nav-btn" data-module="clipboard" title="Clipboard">
+        <span class="nav-icon">⎘</span><span class="nav-label">Clipboard</span>
+      </button>
+      <button class="nav-btn" data-module="templates" title="Templates">
+        <span class="nav-icon">⊟</span><span class="nav-label">Templates</span>
+      </button>
+      <button class="nav-btn" data-module="tasks" title="Tasks">
+        <span class="nav-icon">✓</span><span class="nav-label">Tasks</span>
+      </button>
+      <button class="nav-btn" data-module="notes" title="Notes">
+        <span class="nav-icon">✎</span><span class="nav-label">Notes</span>
+      </button>
+      <button class="nav-btn" data-module="bookmarks" title="Bookmarks">
+        <span class="nav-icon">◉</span><span class="nav-label">Bookmarks</span>
+      </button>
+      <button class="nav-btn" data-module="calendar" title="Calendar">
+        <span class="nav-icon">▦</span><span class="nav-label">Calendar</span>
+      </button>
+      <button class="nav-btn" data-module="weather" title="Weather">
+        <span class="nav-icon">◌</span><span class="nav-label">Weather</span>
+      </button>
+      <button class="nav-btn" data-module="files" title="Recent Folders">
+        <span class="nav-icon">◫</span><span class="nav-label">Folders & Files</span>
+      </button>
+      <button class="nav-btn" data-module="clocks" title="World Clocks">
+        <span class="nav-icon">◷</span><span class="nav-label">World Clocks</span>
+      </button>
+      <button class="nav-btn" data-module="reminders" title="Reminders">
+        <span class="nav-icon">◎</span><span class="nav-label">Reminders</span>
+      </button>
+      <button class="nav-btn" data-module="sysmon" title="System Monitor">
+        <span class="nav-icon">⊡</span><span class="nav-label">System</span>
+      </button>
+      <button class="nav-btn" data-module="random" title="Random">
+        <span class="nav-icon">⚄</span><span class="nav-label">Randomizer</span>
+      </button>
+    </nav>
+    <div class="sidebar-footer">
+      <span class="sidebar-ver" id="app-version">v1.0</span>
+    </div>
+  </div>
+
+  <main class="content" id="content"></main>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <div class="launcher-overlay" id="launcher-overlay">
+    <div class="launcher-overlay-box">
+      <div class="launcher-overlay-prompt">›</div>
+      <input class="launcher-overlay-input" id="launcher-overlay-input" placeholder="Type an alias..." autocomplete="off" spellcheck="false" />
+      <span class="launcher-overlay-hint">↵ open · ↑↓ navigate · esc close</span>
+    </div>
+    <div class="launcher-overlay-results" id="launcher-overlay-results"></div>
+  </div>
+
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <span class="modal-title" id="modal-title"></span>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script src="js/modules/clipboard.js"></script>
+  <script src="js/modules/templates.js"></script>
+  <script src="js/modules/launcher.js"></script>
+  <script src="js/modules/tasks.js"></script>
+  <script src="js/modules/notes.js"></script>
+  <script src="js/modules/bookmarks.js"></script>
+  <script src="js/modules/calendar.js"></script>
+  <script src="js/modules/weather.js"></script>
+  <script src="js/modules/sysmon.js"></script>
+  <script src="js/modules/files.js"></script>
+  <script src="js/modules/clocks.js"></script>
+  <script src="js/modules/reminders.js"></script>
+  <script src="js/modules/random.js"></script>
+  <script src="js/modules/dashboard.js"></script>
+</body>
+</html>
