@@ -2,7 +2,7 @@ Modules.links = {
   async render(container) {
     const links = await window.api.getData('links');
     container.innerHTML = `
-      ${Utils.modHead('06 / Links', 'Quick Links', 'Click to open in browser', `<button class="btn btn-gold" id="link-add">+ Add Link</button>`)}
+      ${Utils.modHead('Links', 'Quick Links', 'Click to open in browser', `<button class="btn btn-gold" id="link-add">+ Add Link</button>`)}
       <div class="links-wrap">
         <div class="links-list" id="links-list"></div>
       </div>`;

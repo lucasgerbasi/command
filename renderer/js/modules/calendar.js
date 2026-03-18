@@ -3,7 +3,7 @@ Modules.calendar = {
   async render(container) {
     const events = await window.api.getData('calendar');
     this.selectedDate = this.selectedDate || new Date().toDateString();
-    container.innerHTML = `${Utils.modHead('08 / Calendar', 'Calendar', '')}<div class="cal-layout"><div class="cal-grid" id="cal-grid"></div><div class="cal-sidebar"><div class="cal-day-events" id="cal-day"></div><div class="add-event-form" id="cal-add"></div></div></div>`;
+    container.innerHTML = `${Utils.modHead('Calendar', 'Calendar', '')}<div class="cal-layout"><div class="cal-grid" id="cal-grid"></div><div class="cal-sidebar"><div class="cal-day-events" id="cal-day"></div><div class="add-event-form" id="cal-add"></div></div></div>`;
 
     const renderCal = () => {
       const year=this.currentDate.getFullYear(), month=this.currentDate.getMonth();

@@ -1,4 +1,5 @@
 Modules.clocks = {
+  cleanup() { if (this.interval) { clearInterval(this.interval); this.interval = null; } },
   interval: null,
 
   TIMEZONES: [
@@ -22,7 +23,7 @@ Modules.clocks = {
     const saved = await window.api.getData('clocks-config').catch(()=>null) || [];
     const clocks = saved.length ? saved : [{city:'Local Time', tz:Intl.DateTimeFormat().resolvedOptions().timeZone, isLocal:true}];
 
-    container.innerHTML = `${Utils.modHead('14 / Clocks', 'World Clocks', '', `<button class="btn btn-gold" id="header-add-clock-btn">+ Add Clock</button>`)}
+    container.innerHTML = `${Utils.modHead('Clocks', 'World Clocks', '', `<button class="btn btn-gold" id="header-add-clock-btn">+ Add Clock</button>`)}
       <div><div class="clocks-grid" id="clocks-grid"></div></div>`;
 
     const render = (list) => {

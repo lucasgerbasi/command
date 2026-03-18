@@ -5,7 +5,7 @@ Modules.templates = {
   async render(container) {
     const templates = await window.api.getData('templates') || [];
     container.innerHTML = `
-      ${Utils.modHead('02 / Templates', 'Clipboard Templates', 'One-click copy for frequently used text')}
+      ${Utils.modHead('Templates', 'Clipboard Templates', 'One-click copy for frequently used text')}
       <div class="tmpl-grid">
         <div class="tmpl-list">
           <div class="tmpl-list-hdr">

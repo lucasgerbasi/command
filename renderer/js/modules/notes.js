@@ -3,7 +3,7 @@ Modules.notes = {
   async render(container) {
     const notes = await window.api.getData('notes');
     container.innerHTML = `
-      ${Utils.modHead('05 / Notes', 'Quick Notes', '')}
+      ${Utils.modHead('Notes', 'Quick Notes', '')}
       <div class="notes-grid">
         <div class="notes-list">
           <div class="notes-list-hdr"><span>Notes (${notes.length})</span><button class="btn-icon" id="new-note" style="font-size:16px">+</button></div>
@@ -59,6 +59,11 @@ Modules.notes = {
     };
 
     renderList();
+    // Auto-open the last edited note, or the first note if no activeId
+    if (cur.length) {
+      const target = (this.activeId && cur.find(n=>n.id===this.activeId)) ? this.activeId : cur[0].id;
+      open(target);
+    }
     document.getElementById('new-note').addEventListener('click', newNote);
     document.getElementById('notes-empty-new')?.addEventListener('click', newNote);
     document.getElementById('note-items').addEventListener('click', e=>{ const i=e.target.closest('.note-item'); if(i) open(i.dataset.id); });
@@ -74,4 +79,42 @@ Modules.notes = {
       renderList(); App.toast('Deleted');
     });
   },
+};
+
+// Patch: add drag-reorder to note list after render
+const _origNotesRender = Modules.notes.render.bind(Modules.notes);
+Modules.notes.render = async function(container) {
+  await _origNotesRender(container);
+  // Attach drag reorder after the list renders
+  const attachDrag = () => {
+    const itemsEl = document.getElementById('note-items');
+    if (!itemsEl) return;
+    // Re-index items with drag-idx
+    itemsEl.querySelectorAll('.note-item').forEach((el, i) => el.dataset.dragIdx = i);
+    // We need the live notes array — re-fetch and re-attach on drop
+    itemsEl.querySelectorAll('.note-item[data-drag-idx]').forEach(row => {
+      row.setAttribute('draggable', 'true');
+      row.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', row.dataset.dragIdx);
+        setTimeout(() => row.classList.add('dragging'), 0);
+      });
+      row.addEventListener('dragend', () => row.classList.remove('dragging'));
+      row.addEventListener('dragover', e => { e.preventDefault(); itemsEl.querySelectorAll('.drag-over').forEach(el=>el.classList.remove('drag-over')); row.classList.add('drag-over'); });
+      row.addEventListener('drop', async e => {
+        e.preventDefault(); row.classList.remove('drag-over');
+        const from = +e.dataTransfer.getData('text/plain'), to = +row.dataset.dragIdx;
+        if (from === to) return;
+        const notes = await window.api.getData('notes');
+        const moved = notes.splice(from, 1)[0];
+        notes.splice(to, 0, moved);
+        await window.api.setData('notes', notes);
+        App.navigate('notes');
+      });
+    });
+  };
+  // Observe DOM changes to re-attach after list re-renders
+  const obs = new MutationObserver(attachDrag);
+  const itemsEl = document.getElementById('note-items');
+  if (itemsEl) obs.observe(itemsEl, { childList: true });
+  attachDrag();
 };

@@ -2,7 +2,7 @@ Modules.clipboard = {
   async render(container) {
     const all = await window.api.getData('clipboard');
     container.innerHTML = `
-      ${Utils.modHead('01 / Clipboard', 'History', `${all.length} / 50 items`, `<button class="btn" id="clip-clear">Clear unpinned</button>`)}
+      ${Utils.modHead('Clipboard', 'History', `${all.length} / 50 items`, `<button class="btn" id="clip-clear">Clear unpinned</button>`)}
       <div class="clip-search-row">
         <input class="input input-mono" id="clip-search" placeholder="Search…" style="flex:1" />
       </div>

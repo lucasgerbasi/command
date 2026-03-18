@@ -1,6 +1,6 @@
 Modules.random = {
   async render(container) {
-    container.innerHTML = `${Utils.modHead('16 / Random', 'Random', 'Dice, coins, and number tools')}
+    container.innerHTML = `${Utils.modHead('Random', 'Random', 'Dice, coins, and number tools')}
       <div class="random-wrap">
         <div class="section-label">Dice</div>
         <div class="dice-grid" id="dice-grid"></div>

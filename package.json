@@ -6,20 +6,30 @@
   "scripts": {
     "start": "npx electron .",
     "dev": "npx electron . --dev",
-    "build:win": "npx electron-builder --win",
-    "build:mac": "npx electron-builder --mac",
-    "build:linux": "npx electron-builder --linux"
+    "build": "electron-builder",
+    "pack": "electron-builder --dir"
   },
+  "author": "Lucas Gerbasi",
+  "license": "ISC",
   "devDependencies": {
-    "electron": "^28.0.0",
-    "electron-builder": "^24.0.0"
+    "electron": "^41.0.1",
+    "electron-builder": "^26.8.1"
   },
   "build": {
-    "appId": "com.command.app",
+    "appId": "com.lucasgerbasi.command",
     "productName": "Command",
+    "directories": {
+      "output": "dist"
+    },
     "win": {
       "target": "nsis",
       "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "mac": {
       "target": "dmg",

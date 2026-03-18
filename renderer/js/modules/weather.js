@@ -3,7 +3,7 @@ Modules.weather = {
     const config = await window.api.getData('weather-config').catch(()=>null) || {};
     
     container.innerHTML = `
-      ${Utils.modHead('10 / Weather', 'Weather Status', 'Powered by Open-Meteo', `<button class="btn" id="weather-config-btn">⚙ Configure Location</button>`)}
+      ${Utils.modHead('Weather', 'Weather Status', 'Powered by Open-Meteo', `<button class="btn" id="weather-config-btn">⚙ Configure Location</button>`)}
       <div class="weather-wrap" id="weather-content">
         <div class="empty-state"><div class="empty-icon">◌</div><div class="empty-text">Loading weather...</div></div>
       </div>`;
