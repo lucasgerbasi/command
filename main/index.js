@@ -590,28 +590,25 @@ async function chroniclePoll() {
   writeChronicle(chronicle);
 }
 
-// ── Fuzzy title similarity (Levenshtein-based, digit-word aware) ──────────────
 function titleSimilarity(a, b) {
-  // Extract pure digit tokens — "Battlefield 1" vs "Battlefield 5" must NOT merge
   const digitWord = /\b\d+\b/g;
   const digA = (a.match(digitWord) || []).join('|');
   const digB = (b.match(digitWord) || []).join('|');
-  if (digA !== digB) return 0; // different standalone numbers → never merge
+  if (digA !== digB) return 0;
 
-  // Strip version-like suffixes for comparison: "1.6.15", "SMAPI 4.5.1", "#193 mods", "[main player]"
   const clean = s => s
-    .replace(/\d+\.\d+[\d.]*\b/g, '')    // version numbers
-    .replace(/smapi\s+[\d.]+/gi, '')      // "SMAPI 4.5.1"
-    .replace(/with\s+\d+\s+mods?/gi, '') // "with 193 mods"
-    .replace(/\[.*?\]/g, '')              // [...] tags
-    .replace(/\(.*?\)/g, '')             // (...) tags
+    .replace(/\d+\.\d+[\d.]*\b/g, '')
+    .replace(/smapi\s+[\d.]+/gi, '')
+    .replace(/with\s+\d+\s+mods?/gi, '')
+    .replace(/\[.*?\]/g, '')
+    .replace(/\(.*?\)/g, '')
     .replace(/\s+/g, ' ').trim().toLowerCase();
 
   const sa = clean(a), sb = clean(b);
   if (!sa || !sb) return 0;
   if (sa === sb) return 1;
 
-  // Levenshtein distance
+  
   const la = sa.length, lb = sb.length;
   if (Math.abs(la - lb) > Math.max(la, lb) * 0.5) return 0;
   const dp = Array.from({ length: la + 1 }, (_, i) => Array.from({ length: lb + 1 }, (_, j) => i || j));
@@ -623,7 +620,6 @@ function titleSimilarity(a, b) {
   return 1 - dist / maxLen;
 }
 
-// Merge similar window titles, keeping the one with most ticks as canonical
 function mergeSimilarTitles(windows) {
   const entries = Object.entries(windows);
   const merged = {};
@@ -644,7 +640,6 @@ function mergeSimilarTitles(windows) {
     }
     used.add(i);
 
-    // Canonical = whichever title has most ticks, or shortest clean name
     const totalTicks = group.reduce((s, [, n]) => s + n, 0);
     const best = group.sort((a, b) => b[1] - a[1])[0][0];
     merged[best] = totalTicks;

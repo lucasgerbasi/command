@@ -279,10 +279,6 @@ const App = {
 
       btn.addEventListener('dragend', () => {
         btn.classList.remove('nav-dragging');
-        nav.querySelectorAll('.nav-drag-over, .drop-indicator').forEach(el => {
-          if (el.classList.contains('drop-indicator')) el.remove();
-          else el.classList.remove('nav-drag-over');
-        });
         dragSrc = null;
         this._saveNavOrder(nav);
         // Suppress the click that fires immediately after dragend
@@ -293,29 +289,21 @@ const App = {
       btn.addEventListener('dragover', e => {
         e.preventDefault();
         if (!dragSrc || dragSrc === btn) return;
-        nav.querySelectorAll('.nav-drag-over').forEach(el => el.classList.remove('nav-drag-over'));
-        nav.querySelectorAll('.drop-indicator').forEach(el => el.remove());
-        const rect = btn.getBoundingClientRect();
-        const indicator = document.createElement('div');
-        indicator.className = 'drop-indicator';
-        if (e.clientY < rect.top + rect.height / 2) {
-          nav.insertBefore(indicator, btn);
+        
+        const allBtns = [...nav.querySelectorAll('.nav-btn')];
+        const draggedIdx = allBtns.indexOf(dragSrc);
+        const targetIdx = allBtns.indexOf(btn);
+        
+        // Live ghost preview moving via DOM insertion
+        if (draggedIdx < targetIdx) {
+          nav.insertBefore(dragSrc, btn.nextSibling);
         } else {
-          nav.insertBefore(indicator, btn.nextSibling);
+          nav.insertBefore(dragSrc, btn);
         }
-        btn.classList.add('nav-drag-over');
       });
 
-      btn.addEventListener('dragleave', () => btn.classList.remove('nav-drag-over'));
-
       btn.addEventListener('drop', e => {
-        e.preventDefault();
-        btn.classList.remove('nav-drag-over');
-        if (!dragSrc || dragSrc === btn) return;
-        const rect = btn.getBoundingClientRect();
-        const mid  = rect.top + rect.height / 2;
-        if (e.clientY < mid) nav.insertBefore(dragSrc, btn);
-        else nav.insertBefore(dragSrc, btn.nextSibling || null);
+        e.preventDefault(); // reordering handled by DOM sync on dragend
       });
     });
   },

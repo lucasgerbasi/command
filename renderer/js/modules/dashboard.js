@@ -128,7 +128,7 @@ Modules.dashboard = {
                 const idx = data.indexOf(h);
                 const dot = PDOT[h.priority||''];
                 return `<div class="dash-row dash-interactive" data-action="toggle-habit" data-idx="${idx}" style="cursor:pointer;border-left:3px solid ${dot||'transparent'}" title="Click to toggle">
-                  ${dot ? `<span style="width:6px;height:6px;border-radius:50%;background:${dot};flex-shrink:0;opacity:${done?.4:1}"></span>` : `<div class="dash-dot" style="${done?'background:var(--gold)':''}"></div>`}
+                  ${dot ? `<span style="width:6px;height:6px;border-radius:50%;background:${dot};flex-shrink:0;opacity:${done ? 0.4 : 1}"></span>` : `<div class="dash-dot" style="${done?'background:var(--gold)':''}"></div>`}
                   <span class="dash-row-text" style="${done ? 'text-decoration:line-through;opacity:.45' : ''}">${h.name}</span>
                   <span class="dash-row-meta" style="opacity:.5">${done ? '✓' : '○'}</span>
                 </div>`;
@@ -690,6 +690,11 @@ Modules.dashboard = {
     const grid = document.getElementById('dash-grid');
     this.renderGrid(grid, config);
 
+    // Allow grid container to act as a drop zone so panels can be dragged directly into open gaps
+    grid.addEventListener('dragover', e => {
+      if (grid.classList.contains('edit-mode')) e.preventDefault();
+    });
+
     // Live tick — re-renders timer/pomodoro panel bodies every second without full re-render
     if (this._liveInterval) clearInterval(this._liveInterval);
     this._liveInterval = setInterval(() => {
@@ -809,30 +814,54 @@ Modules.dashboard = {
       panel.setAttribute('draggable', 'true');
       panel.addEventListener('dragstart', e => {
         if (!grid.classList.contains('edit-mode')) { e.preventDefault(); return; }
-        panel.classList.add('dragging');
+        
+        // CRITICAL for HTML5 Drag APIs: setData is required otherwise Chrome cancels the drag
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', String(idx));
+        e.dataTransfer.setData('text/plain', key); 
+        
+        App.setDragGhost(e, def.label); // Uses your custom stylized drag ghost label
+        
+        panel.classList.add('dragging');
+        this._draggingPanel = panel;
       });
+      
       panel.addEventListener('dragend', () => {
         panel.classList.remove('dragging');
-        grid.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        this._draggingPanel = null;
+        
+        // Save new order from DOM elements dynamically instead of indices
+        const newConfig = [];
+        grid.querySelectorAll('.dash-panel').forEach(p => {
+          const k = p.dataset.key;
+          const c = config.find(x => x.key === k);
+          if (c) newConfig.push(c);
+        });
+        config.length = 0;
+        newConfig.forEach(c => config.push(c));
+        this.saveConfig(config);
       });
+      
       panel.addEventListener('dragover', e => {
-        if (!grid.classList.contains('edit-mode')) return;
+        // Chromium needs preventDefault here for drop to be enabled and to allow reordering
         e.preventDefault();
-        grid.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-        panel.classList.add('drag-over');
+        
+        if (!grid.classList.contains('edit-mode') || !this._draggingPanel || this._draggingPanel === panel) return;
+        
+        const allPanels = [...grid.querySelectorAll('.dash-panel')];
+        const draggedIdx = allPanels.indexOf(this._draggingPanel);
+        const targetIdx = allPanels.indexOf(panel);
+        
+        // Live ghost preview moving via DOM insertion
+        // Since we physically shift the node, CSS Grid automatically reflows and pushes other elements
+        if (draggedIdx < targetIdx) {
+          panel.parentNode.insertBefore(this._draggingPanel, panel.nextSibling);
+        } else {
+          panel.parentNode.insertBefore(this._draggingPanel, panel);
+        }
       });
+      
       panel.addEventListener('drop', e => {
-        e.preventDefault();
-        panel.classList.remove('drag-over');
-        const fromIdx = +e.dataTransfer.getData('text/plain');
-        const toIdx = idx;
-        if (fromIdx === toIdx) return;
-        const moved = config.splice(fromIdx, 1)[0];
-        config.splice(toIdx, 0, moved);
-        this.renderGrid(grid, config);
-        grid.classList.add('edit-mode');
+        e.preventDefault(); // handled by dragend instead
       });
 
       grid.appendChild(panel);

@@ -341,7 +341,7 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
   margin: 18px 0 10px;
 }
 
-/* ─── Empty State ─────────────────────────────────────────── */
+/* ─── Empty State ───────────────────────────────────────── */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -509,7 +509,8 @@ textarea.input { resize: vertical; min-height: 80px; line-height: 1.6; }
   font-size: 32px;
   font-weight: 300;
   letter-spacing: -0.02em;
-  line-height: 1;
+  line-height: 1.15;
+  padding-bottom: 2px;
 }
 .dash-greeting-sub {
   font-family: var(--mono);
