@@ -108,9 +108,24 @@ Modules.chronicle = {
       await window.api.chronicleSetEnabled(e.target.checked);
     });
     document.getElementById('btn-recover-data')?.addEventListener('click', async () => {
-      await window.api.chronicleBuildSnapshot();
-      App.toast('Snapshots recovered', 'success');
-      this.render(container);
+      // Show backup metadata first
+      const meta = await window.api.backupGetMeta().catch(() => null);
+      const timeLabel = meta?.time
+        ? `Last backup: ${new Date(meta.time).toLocaleString()}`
+        : 'No backup timestamp found';
+      const ok = await App.confirm(
+        `Restore from backup?\n\n${timeLabel}\n\nThis will restore your Chronicle data from the most recent auto-backup. Your current Chronicle data will be replaced.`,
+        { title: 'Restore Backup', icon: '↺' }
+      );
+      if (!ok) return;
+      const result = await window.api.backupRestore().catch(e => ({ ok: false, error: e.message }));
+      if (result.ok) {
+        const when = result.backupTime ? new Date(result.backupTime).toLocaleString() : 'unknown time';
+        App.toast(`✓ Restored from backup (${when})`, 'success');
+        this.render(container);
+      } else {
+        App.toast(`Restore failed: ${result.error || 'unknown error'}`, 'error');
+      }
     });
     document.getElementById('btn-wipe-chronicle')?.addEventListener('click', async () => {
       const ok = await App.confirm('Permanently delete all Chronicle data?', { danger: true, icon: '⚠' });
@@ -267,6 +282,9 @@ Modules.chronicle = {
         this.render(rootContainer);
       });
     });
+    el.querySelectorAll('.chr-combine-app').forEach(btn => {
+      btn.addEventListener('click', () => this.combineWindows(btn.dataset.date, btn.dataset.app, rootContainer));
+    });
   },
 
   openMoodPicker(date, C, rootContainer) {
@@ -313,6 +331,14 @@ Modules.chronicle = {
     const todayHasData = Object.keys(todayWindows).length > 0;
     const todaySnapped = !!chronicle[todayKey]?.snapshot;
 
+    // Fix: show previous day name until 8am
+    const todayDisplayName = (() => {
+      const n = new Date();
+      const showPrev = n.getHours() < 8;
+      const d = showPrev ? new Date(n.getTime() - 86400000) : n;
+      return d.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+    })();
+
     let html = '';
     if (todayHasData && !todaySnapped) {
       html += `
@@ -322,10 +348,11 @@ Modules.chronicle = {
           </div>
           <div class="chr-snap-card" style="border-color:var(--border-2)">
             <div style="padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg-1);display:flex;align-items:center;gap:10px">
-              <span style="font-size:13px;font-weight:700;color:var(--text);flex:1">Today — ${new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</span>
+              <span style="font-size:13px;font-weight:700;color:var(--text);flex:1">Today — ${todayDisplayName}</span>
               <span style="font-size:10px;color:var(--text-muted);font-family:var(--mono)">${Object.values(todayWindows).reduce((a,b)=>a+b,0)} ticks · ${Object.keys(todayWindows).length} apps</span>
+              <button id="chr-clear-today-ticks" style="background:transparent;border:1px solid var(--red,#ef4444);color:var(--red,#ef4444);padding:2px 8px;font-size:9px;cursor:pointer" title="Delete today's ticks so far">Clear today's ticks</button>
             </div>
-            <div style="padding:12px 16px">${this.winBars(todayWindows, 8, null)}</div>
+            <div style="padding:12px 16px">${this.winBars(todayWindows, 8, todayKey)}</div>
           </div>
         </div>`;
     }
@@ -353,6 +380,15 @@ Modules.chronicle = {
 
     el.innerHTML = html;
 
+    // Clear today's ticks button
+    el.querySelector('#chr-clear-today-ticks')?.addEventListener('click', async () => {
+      const ok = await App.confirm("Delete all of today's ticks so far? This cannot be undone.", { danger: true });
+      if (!ok) return;
+      const c = await window.api.chronicleGet().catch(() => ({}));
+      if (c[todayKey]) { c[todayKey].windows = {}; await window.api.setData('chronicle', c); }
+      App.toast("Today's ticks cleared"); this.render(rootContainer);
+    });
+
     el.querySelectorAll('.chronicle-del-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (confirm('Delete this snapshot?')) {
@@ -367,6 +403,9 @@ Modules.chronicle = {
         this.render(rootContainer);
       });
     });
+    el.querySelectorAll('.chr-combine-app').forEach(btn => {
+      btn.addEventListener('click', () => this.combineWindows(btn.dataset.date, btn.dataset.app, rootContainer));
+    });
     el.querySelectorAll('.chr-attach-mood').forEach(btn => {
       btn.addEventListener('click', () => {
         this.expandedDay = btn.dataset.date;
@@ -380,6 +419,8 @@ Modules.chronicle = {
     const { MOOD_EMOJI, MOOD_LABEL, MOOD_COLOR } = C;
     const dateLabel = new Date(date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
     const moodScore = snap.mood?.score;
+    const keywords = (snap.keywords||[]).slice(0,5);
+    const userKw = snap.userKeyword;
     return `
       <div class="chr-snap-card">
         <div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg-1)">
@@ -390,6 +431,9 @@ Modules.chronicle = {
             : `<button class="chr-attach-mood" data-date="${date}" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);padding:2px 7px;font-size:9px;cursor:pointer;letter-spacing:.04em">+ mood</button>`}
           <button class="btn-icon chronicle-del-btn" data-date="${date}" style="color:var(--text-muted);font-size:12px" title="Delete">🗑</button>
         </div>
+        ${keywords.length ? `<div style="padding:6px 16px;display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--border)">
+          ${keywords.map(kw => `<span class="kw-chip ${userKw===kw?'user-kw':''}" style="font-size:9px">${kw.replace(/</g,'&lt;')}</span>`).join('')}
+        </div>` : ''}
         <div style="display:grid;grid-template-columns:1fr ${snap.clips?.length?'220px':''};gap:0">
           <div style="padding:12px 16px;${snap.clips?.length?'border-right:1px solid var(--border)':''}">
             ${this.winBars(snap.top10?.length ? Object.fromEntries(snap.top10.map(w=>[w.title,w.ticks||0])) : {}, 8, date)}

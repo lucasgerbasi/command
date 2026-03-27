@@ -75,6 +75,25 @@ Modules.settings = {
           </div>
         </div>
 
+        <!-- Font Color -->
+        <div class="settings-section">
+          <div class="settings-section-title">Font Color</div>
+          <div class="settings-row">
+            <span class="settings-label">Text color</span>
+            <input type="color" id="text-color-picker" value="${cfg.textColor||'#d9d9d9'}"
+              style="width:40px;height:28px;border:none;background:none;cursor:pointer;padding:0" />
+            <span id="text-color-hex" style="font-family:var(--mono);font-size:11px;color:var(--text-muted);min-width:60px">${cfg.textColor||'#d9d9d9'}</span>
+          </div>
+          <div class="settings-row" style="margin-top:6px">
+            <span class="settings-label">Auto-derive muted/dim</span>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px">
+              <input type="checkbox" id="text-color-auto" ${cfg.textColorAuto!==false?'checked':''} style="accent-color:var(--accent)" />
+              <span style="color:var(--text-dim)">Yes (recommended)</span>
+            </label>
+          </div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:8px;line-height:1.5">Fixes invisible text on bright backgrounds. Set to dark (e.g. #111) for light themes.</div>
+        </div>
+
         <!-- Typography -->
         <div class="settings-section">
           <div class="settings-section-title">Typography</div>
@@ -188,6 +207,17 @@ Modules.settings = {
       App.applyTheme(cfg);
     });
 
+    // Text color picker
+    const textColorPicker = container.querySelector('#text-color-picker');
+    const textColorHex    = container.querySelector('#text-color-hex');
+    if (textColorPicker) {
+      textColorPicker.addEventListener('input', e => {
+        cfg.textColor = e.target.value;
+        textColorHex.textContent = e.target.value;
+        App.applyTheme(cfg);
+      });
+    }
+
     // Font
     container.querySelectorAll('.font-option').forEach(opt => {
       opt.addEventListener('click', () => {
@@ -213,6 +243,7 @@ Modules.settings = {
       cfg.rounded = document.getElementById('rounded-toggle').checked;
       cfg.glass   = document.getElementById('glass-toggle').checked;
       cfg.bgAuto  = document.getElementById('bg-auto').checked;
+      cfg.textColorAuto = document.getElementById('text-color-auto')?.checked !== false;
       await save();
       App.toast('Theme saved ✓', 'success');
     });

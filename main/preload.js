@@ -52,4 +52,8 @@ contextBridge.exposeInMainWorld('api', {
 
   // Chronicle extras
   chronicleSetUserKeyword: (date, kw) => ipcRenderer.invoke('chronicle-set-user-keyword', date, kw),
+
+  // Backup system
+  backupGetMeta: () => ipcRenderer.invoke('backup-get-meta'),
+  backupRestore: () => ipcRenderer.invoke('backup-restore'),
 });

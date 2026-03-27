@@ -6,6 +6,7 @@ let mainWindow = null;
 let tray = null;
 
 const DATA_DIR = path.join(app.getPath('userData'), 'data');
+const BACKUP_DIR = path.join(app.getPath('userData'), 'backups');
 const FILES = {
   clipboard: path.join(DATA_DIR, 'clipboard.json'),
   tasks: path.join(DATA_DIR, 'tasks.json'),
@@ -35,7 +36,8 @@ const FILES = {
   'profile-config': path.join(DATA_DIR, 'profile-config.json'),
 };
 
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(DATA_DIR))    fs.mkdirSync(DATA_DIR,    { recursive: true });
+if (!fs.existsSync(BACKUP_DIR)) fs.mkdirSync(BACKUP_DIR, { recursive: true });
 
 function initDataFiles() {
   const defaults = {
@@ -769,6 +771,77 @@ ipcMain.handle('chronicle-set-user-keyword', (_, date, keyword) => {
   }
 });
 
+
+// ─── Backup System ────────────────────────────────────────────────────────────
+// Backs up chronicle.json (and key data files) every 3 hours.
+// Keeps only the single most recent backup — old one is deleted before writing new.
+// Recover button pulls the latest backup.
+
+const BACKUP_CHRONICLE_PATH = path.join(BACKUP_DIR, 'chronicle.backup.json');
+const BACKUP_META_PATH       = path.join(BACKUP_DIR, 'backup.meta.json');
+
+function runBackup() {
+  try {
+    // Chronicle backup (most critical — this is what was being lost)
+    if (fs.existsSync(CHRONICLE_PATH)) {
+      fs.copyFileSync(CHRONICLE_PATH, BACKUP_CHRONICLE_PATH);
+    }
+    // Also back up a small bundle of key data files so nothing else is lost
+    const bundle = {};
+    const BACKUP_KEYS = ['tasks','notes','queue','library','moods','habits','bookmarks','reminders','launcher'];
+    for (const key of BACKUP_KEYS) {
+      const p = path.join(DATA_DIR, `${key}.json`);
+      if (fs.existsSync(p)) {
+        try { bundle[key] = JSON.parse(fs.readFileSync(p, 'utf8')); } catch {}
+      }
+    }
+    fs.writeFileSync(path.join(BACKUP_DIR, 'data.backup.json'), JSON.stringify(bundle, null, 2));
+    // Write metadata
+    fs.writeFileSync(BACKUP_META_PATH, JSON.stringify({ time: new Date().toISOString() }, null, 2));
+    console.log('[Backup] Snapshot saved at', new Date().toISOString());
+  } catch (e) {
+    console.warn('[Backup] Failed:', e.message);
+  }
+}
+
+function startBackupSchedule() {
+  // Run immediately on startup, then every 3 hours
+  runBackup();
+  setInterval(runBackup, 3 * 60 * 60 * 1000);
+}
+
+ipcMain.handle('backup-get-meta', () => {
+  try { return JSON.parse(fs.readFileSync(BACKUP_META_PATH, 'utf8')); } catch { return null; }
+});
+
+ipcMain.handle('backup-restore', () => {
+  try {
+    let chronicleRestored = false;
+    if (fs.existsSync(BACKUP_CHRONICLE_PATH)) {
+      fs.copyFileSync(BACKUP_CHRONICLE_PATH, CHRONICLE_PATH);
+      chronicleRestored = true;
+    }
+    // Restore data bundle — only if files don't exist or are empty
+    const bundlePath = path.join(BACKUP_DIR, 'data.backup.json');
+    if (fs.existsSync(bundlePath)) {
+      const bundle = JSON.parse(fs.readFileSync(bundlePath, 'utf8'));
+      for (const [key, data] of Object.entries(bundle)) {
+        const p = path.join(DATA_DIR, `${key}.json`);
+        // Only restore if current file is empty/missing — don't overwrite live data
+        let curSize = 0;
+        try { curSize = fs.statSync(p).size; } catch {}
+        if (curSize < 10) {
+          fs.writeFileSync(p, JSON.stringify(data, null, 2));
+        }
+      }
+    }
+    const meta = fs.existsSync(BACKUP_META_PATH) ? JSON.parse(fs.readFileSync(BACKUP_META_PATH, 'utf8')) : null;
+    return { ok: true, chronicleRestored, backupTime: meta?.time || null };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+});
+
 function startChronicle() {
   // Load enabled state from stored data
   const _c = readChronicle();
@@ -842,7 +915,7 @@ ipcMain.handle('chronicle-is-enabled', () => {
 });
 
 app.whenReady().then(() => {
-  initDataFiles(); registerIPC(); createWindow(); createTray(); startClipboardWatcher(); startChronicle();
+  initDataFiles(); registerIPC(); createWindow(); createTray(); startClipboardWatcher(); startChronicle(); startBackupSchedule();
   globalShortcut.register('CommandOrControl+Shift+Space', () => {
     if (mainWindow) mainWindow.isVisible() && mainWindow.isFocused() ? mainWindow.hide() : (mainWindow.show(), mainWindow.focus());
   });

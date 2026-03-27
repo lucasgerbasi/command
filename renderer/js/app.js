@@ -66,6 +66,23 @@ const App = {
       r.style.setProperty('--bg-3',     cfg.bg3 || cfg.bg);
       r.style.setProperty('--bg-hover', cfg.bgHover || cfg.bg);
     }
+    // Font color — fixes invisible text on bright backgrounds
+    if (cfg.textColor) {
+      const hex2rgb = h => { const n=parseInt(h.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; };
+      try {
+        const [tr,tg,tb] = hex2rgb(cfg.textColor);
+        r.style.setProperty('--text',       cfg.textColor);
+        if (cfg.textColorAuto !== false) {
+          r.style.setProperty('--text-dim',   `rgba(${tr},${tg},${tb},0.50)`);
+          r.style.setProperty('--text-muted', `rgba(${tr},${tg},${tb},0.30)`);
+        }
+      } catch {}
+    } else {
+      // Reset to defaults
+      r.style.setProperty('--text',       'rgba(255,255,255,0.85)');
+      r.style.setProperty('--text-dim',   'rgba(255,255,255,0.40)');
+      r.style.setProperty('--text-muted', 'rgba(255,255,255,0.18)');
+    }
     // Font
     if (cfg.font === 'mono') {
       r.style.setProperty('--font', "'JetBrains Mono', monospace");
@@ -508,7 +525,7 @@ const App = {
     const resetState = () => {
       activeCmd = null; stepIdx = 0; stepData = {};
       input.value = '';
-      input.placeholder = 'task · note · remind · calc · timer · find · open · focus · copy · mood · habit · clear · go · queue · ep · rate · plantowatch…';
+      input.placeholder = 'task · note · remind · calc · timer · find · open · focus · copy · mood · habit · clear · go · queue · ep · rate · planto…';
       input.style.paddingLeft = '';
       const prefix = document.getElementById('lov-input-prefix');
       if (prefix) prefix.remove();
@@ -721,10 +738,10 @@ const App = {
           if (App.currentModule === 'library') App.navigate('library');
         }
       },
-      plantowatch: {
+      planto: {
         icon: '📋', color: '#a78bfa',
         steps: [
-          { key: 'title', prompt: 'plantowatch', placeholder: 'Title to add to backlog…' },
+          { key: 'title', prompt: 'planto', placeholder: 'Title to add to backlog…' },
           { key: 'tab',   prompt: null, placeholder: 'watch / read / play (↵ = watch)', optional: true, hint: 'watch · read · play' }
         ],
         run: async d => {
@@ -1136,8 +1153,18 @@ const App = {
     };
 
     input.addEventListener('input', e => {
-      if (!activeCmd) showResults(e.target.value);
-      // step-mode live calc preview is set inside advanceStep via input.oninput
+      if (activeCmd) return; // step-mode live calc preview is set inside advanceStep via input.oninput
+      const val = e.target.value;
+      // Space-trigger: if user typed "command " (with trailing space), auto-enter that command
+      if (val.endsWith(' ') && !val.trim().includes(' ')) {
+        const cmd = val.trim().toLowerCase();
+        if (COMMANDS[cmd]) {
+          e.target.value = '';
+          enterCommand(cmd);
+          return;
+        }
+      }
+      showResults(val);
     });
 
     input.addEventListener('keydown', async e => {
